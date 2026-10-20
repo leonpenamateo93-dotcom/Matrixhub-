@@ -1,0 +1,242 @@
+-- ====================================================================
+-- MATRIX HUB | Duels: Murderer vs Sheriff (UI Corregida)
+-- ====================================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local Config = {
+    ESP = { Enabled = false, Color = Color3.fromRGB(0, 255, 100), TagText = "NOOB", DistanceLimit = 500 },
+    AimAssist = { Enabled = false, FOV = 120, FOVColor = Color3.fromRGB(0, 255, 128) },
+    Tracers = { Enabled = false, Color = Color3.fromRGB(0, 255, 70) },
+    Movement = { DefaultSpeed = 16, CustomSpeed = 16, Enabled = false }
+}
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MatrixHubUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Botón Flotante
+local FloatingButton = Instance.new("TextButton")
+FloatingButton.Size = UDim2.new(0, 45, 0, 45)
+FloatingButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+FloatingButton.BackgroundColor3 = Color3.fromRGB(15, 25, 18)
+FloatingButton.BorderColor3 = Color3.fromRGB(0, 255, 100)
+FloatingButton.BorderSizePixel = 2
+FloatingButton.Text = "MH"
+FloatingButton.TextColor3 = Color3.fromRGB(0, 255, 100)
+FloatingButton.Font = Enum.Font.Code
+FloatingButton.TextSize = 16
+FloatingButton.Active = true
+FloatingButton.Draggable = true
+FloatingButton.Parent = ScreenGui
+
+local UICornerBtn = Instance.new("UICorner")
+UICornerBtn.CornerRadius = UDim.new(0.5, 0)
+UICornerBtn.Parent = FloatingButton
+
+-- Ventana Principal
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 300, 0, 240)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -120)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 12)
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 100)
+MainFrame.BorderSizePixel = 2
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
+
+-- Título
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -30, 0, 30)
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "MATRIX HUB | Duels"
+TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+TitleLabel.Font = Enum.Font.Code
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = MainFrame
+
+-- Botón Cerrar
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -28, 0, 3)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+CloseBtn.Font = Enum.Font.Bold
+CloseBtn.TextSize = 14
+CloseBtn.Parent = MainFrame
+
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
+FloatingButton.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+-- Barra de Pestañas
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(1, -20, 0, 25)
+TabContainer.Position = UDim2.new(0, 10, 0, 30)
+TabContainer.BackgroundTransparency = 1
+TabContainer.Parent = MainFrame
+
+local TabListLayout = Instance.new("UIListLayout")
+TabListLayout.FillDirection = Enum.FillDirection.Horizontal
+TabListLayout.Padding = UDim.new(0, 4)
+TabListLayout.Parent = TabContainer
+
+-- Contenedor de Páginas
+local PageContainer = Instance.new("Frame")
+PageContainer.Size = UDim2.new(1, -20, 1, -65)
+PageContainer.Position = UDim2.new(0, 10, 0, 60)
+PageContainer.BackgroundTransparency = 1
+PageContainer.Parent = MainFrame
+
+local pages = {}
+
+local function CreateTab(name)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(0.23, 0, 1, 0)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(20, 30, 22)
+    tabBtn.BorderColor3 = Color3.fromRGB(0, 200, 80)
+    tabBtn.BorderSizePixel = 1
+    tabBtn.Text = name
+    tabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
+    tabBtn.Font = Enum.Font.Code
+    tabBtn.TextSize = 10
+    tabBtn.Parent = TabContainer
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.CanvasSize = UDim2.new(0, 0, 2, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 100)
+    page.Visible = false
+    page.Parent = PageContainer
+
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 5)
+    layout.Parent = page
+
+    pages[name] = page
+
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, p in pairs(pages) do p.Visible = false end
+        page.Visible = true
+    end)
+
+    return page
+end
+
+local PageESP = CreateTab("ESP")
+local PageAim = CreateTab("AIM")
+local PageTracers = CreateTab("TRACERS")
+local PageMove = CreateTab("MOVE")
+
+PageESP.Visible = true -- Pestaña inicial visible
+
+-- Creador de Toggles
+local function CreateToggle(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -5, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(15, 25, 18)
+    btn.BorderColor3 = Color3.fromRGB(0, 180, 70)
+    btn.BorderSizePixel = 1
+    btn.Text = "  [OFF] " .. text
+    btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 11
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = parent
+
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.Text = (active and "  [ON] " or "  [OFF] ") .. text
+        btn.TextColor3 = active and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(180, 180, 180)
+        callback(active)
+    end)
+end
+
+-- Creador de Sliders
+local function CreateSlider(parent, text, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -5, 0, 35)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 15)
+    label.BackgroundTransparency = 1
+    label.Text = text .. ": " .. tostring(default)
+    label.TextColor3 = Color3.fromRGB(0, 255, 100)
+    label.Font = Enum.Font.Code
+    label.TextSize = 10
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local sliderBg = Instance.new("TextButton")
+    sliderBg.Size = UDim2.new(1, 0, 0, 10)
+    sliderBg.Position = UDim2.new(0, 0, 0, 18)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(20, 30, 20)
+    sliderBg.Text = ""
+    sliderBg.AutoButtonColor = false
+    sliderBg.Parent = frame
+
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderBg
+
+    local dragging = false
+    local function UpdateInput(input)
+        local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+        local val = math.floor(min + ((max - min) * pos))
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = text .. ": " .. tostring(val)
+        callback(val)
+    end
+
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            UpdateInput(input)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            UpdateInput(input)
+        end
+    end)
+end
+
+-- Añadir opciones a las pestañas
+CreateToggle(PageESP, "Activar Matrix ESP", function(s) Config.ESP.Enabled = s end)
+CreateToggle(PageAim, "Activar Aim Assist", function(s) Config.AimAssist.Enabled = s end)
+CreateSlider(PageAim, "Radio FOV", 50, 300, Config.AimAssist.FOV, function(v) Config.AimAssist.FOV = v end)
+CreateToggle(PageTracers, "Activar Tracers", function(s) Config.Tracers.Enabled = s end)
+CreateSlider(PageMove, "Velocidad", 16, 100, 16, function(v) Config.Movement.CustomSpeed = v end)
+CreateToggle(PageMove, "Aplicar Velocidad", function(s)
+    Config.Movement.Enabled = s
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = s and Config.Movement.CustomSpeed or 16
+    end
+end)
