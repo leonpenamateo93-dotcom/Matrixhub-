@@ -1,0 +1,433 @@
+
+-- Matrix Hub | Duels: Murderer vs Sheriff
+-- Interfaz móvil para Roblox Studio
+-- Coloca este LocalScript en StarterPlayerScripts.
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local GREEN = Color3.fromRGB(0, 255, 120)
+local DARK = Color3.fromRGB(13, 18, 17)
+local PANEL = Color3.fromRGB(22, 29, 27)
+local WHITE = Color3.fromRGB(230, 245, 235)
+
+local old = playerGui:FindFirstChild("MatrixHub")
+if old then old:Destroy() end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MatrixHub"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
+gui.DisplayOrder = 20
+gui.Parent = playerGui
+
+local function make(className, props, parent)
+    local obj = Instance.new(className)
+    for key, value in pairs(props) do
+        obj[key] = value
+    end
+    obj.Parent = parent
+    return obj
+end
+
+local main = make("Frame", {
+    Name = "Main",
+    Size = UDim2.new(0.84, 0, 0, 350),
+    Position = UDim2.new(0.08, 0, 0.25, 0),
+    BackgroundColor3 = DARK,
+    BorderSizePixel = 0,
+    Active = true,
+}, gui)
+
+make("UISizeConstraint", {
+    MinSize = Vector2.new(280, 320),
+    MaxSize = Vector2.new(440, 450),
+}, main)
+
+make("UICorner", {CornerRadius = UDim.new(0, 12)}, main)
+make("UIStroke", {
+    Color = GREEN,
+    Thickness = 1.5,
+    Transparency = 0.15,
+}, main)
+
+local header = make("Frame", {
+    Name = "Header",
+    Size = UDim2.new(1, 0, 0, 42),
+    BackgroundColor3 = PANEL,
+    BorderSizePixel = 0,
+}, main)
+make("UICorner", {CornerRadius = UDim.new(0, 12)}, header)
+
+make("TextLabel", {
+    Size = UDim2.new(1, -115, 1, 0),
+    Position = UDim2.fromOffset(12, 0),
+    BackgroundTransparency = 1,
+    Text = "MATRIX HUB | DUELS",
+    TextColor3 = GREEN,
+    Font = Enum.Font.Code,
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, header)
+
+local close = make("TextButton", {
+    Name = "Close",
+    Size = UDim2.fromOffset(32, 30),
+    Position = UDim2.new(1, -72, 0, 6),
+    Text = "X",
+    TextColor3 = WHITE,
+    BackgroundColor3 = Color3.fromRGB(55, 65, 60),
+    Font = Enum.Font.Code,
+    TextSize = 15,
+}, header)
+make("UICorner", {CornerRadius = UDim.new(0, 6)}, close)
+
+local kill = make("TextButton", {
+    Name = "KillScript",
+    Size = UDim2.fromOffset(36, 30),
+    Position = UDim2.new(1, -38, 0, 6),
+    Text = "KILL",
+    TextColor3 = WHITE,
+    BackgroundColor3 = Color3.fromRGB(125, 35, 45),
+    Font = Enum.Font.Code,
+    TextSize = 11,
+}, header)
+make("UICorner", {CornerRadius = UDim.new(0, 6)}, kill)
+
+local tabs = make("Frame", {
+    Size = UDim2.new(1, -16, 0, 36),
+    Position = UDim2.fromOffset(8, 50),
+    BackgroundTransparency = 1,
+}, main)
+
+local tabLayout = make("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal,
+    Padding = UDim.new(0, 5),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+}, tabs)
+
+local content = make("ScrollingFrame", {
+    Name = "Content",
+    Size = UDim2.new(1, -16, 1, -98),
+    Position = UDim2.fromOffset(8, 90),
+    BackgroundColor3 = PANEL,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 4,
+    ScrollBarImageColor3 = GREEN,
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+}, main)
+make("UICorner", {CornerRadius = UDim.new(0, 8)}, content)
+
+local contentLayout = make("UIListLayout", {
+    Padding = UDim.new(0, 8),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+}, content)
+make("UIPadding", {
+    PaddingTop = UDim.new(0, 10),
+    PaddingBottom = UDim.new(0, 10),
+    PaddingLeft = UDim.new(0, 10),
+    PaddingRight = UDim.new(0, 10),
+}, content)
+
+local function clearContent()
+    for _, child in ipairs(content:GetChildren()) do
+        if child:IsA("GuiObject") and child ~= contentLayout then
+            child:Destroy()
+        end
+    end
+end
+
+local function addLabel(text)
+    return make("TextLabel", {
+        Size = UDim2.new(1, -4, 0, 28),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 13,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, content)
+end
+
+local function addButton(text, callback)
+    local button = make("TextButton", {
+        Size = UDim2.new(1, -4, 0, 38),
+        BackgroundColor3 = Color3.fromRGB(28, 48, 38),
+        Text = text,
+        TextColor3 = GREEN,
+        Font = Enum.Font.Code,
+        TextSize = 13,
+        AutoButtonColor = true,
+    }, content)
+    make("UICorner", {CornerRadius = UDim.new(0, 7)}, button)
+    button.Activated:Connect(callback)
+    return button
+end
+
+-- Slider centrado, con hitbox grande y soporte táctil.
+local function addSlider(title, minimum, maximum, initial, callback)
+    local container = make("Frame", {
+        Size = UDim2.new(1, -4, 0, 62),
+        BackgroundTransparency = 1,
+    }, content)
+
+    local label = make("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 25),
+        BackgroundTransparency = 1,
+        Text = title .. ": " .. tostring(initial),
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, container)
+
+    local track = make("Frame", {
+        Size = UDim2.new(1, -12, 0, 8),
+        Position = UDim2.new(0, 6, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(55, 65, 60),
+        BorderSizePixel = 0,
+    }, container)
+    make("UICorner", {CornerRadius = UDim.new(1, 0)}, track)
+
+    local fill = make("Frame", {
+        Size = UDim2.new(0, 0, 1, 0),
+        BackgroundColor3 = GREEN,
+        BorderSizePixel = 0,
+    }, track)
+    make("UICorner", {CornerRadius = UDim.new(1, 0)}, fill)
+
+    local knob = make("Frame", {
+        Size = UDim2.fromOffset(16, 16),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0, 0, 0.5, 0),
+        BackgroundColor3 = WHITE,
+        BorderSizePixel = 0,
+    }, track)
+    make("UICorner", {CornerRadius = UDim.new(1, 0)}, knob)
+
+    local hitbox = make("TextButton", {
+        Size = UDim2.new(1, 0, 0, 38),
+        Position = UDim2.new(0, 0, 0, 26),
+        BackgroundTransparency = 1,
+        Text = "",
+        AutoButtonColor = false,
+    }, container)
+
+    local value = math.clamp(initial, minimum, maximum)
+    local dragging = false
+    local activeTouch
+
+    local function update(x)
+        local width = track.AbsoluteSize.X
+        if width <= 0 then return end
+
+        local alpha = math.clamp(
+            (x - track.AbsolutePosition.X) / width,
+            0, 1
+        )
+        value = math.floor(minimum + alpha * (maximum - minimum) + 0.5)
+        alpha = (value - minimum) / (maximum - minimum)
+
+        fill.Size = UDim2.new(alpha, 0, 1, 0)
+        knob.Position = UDim2.new(alpha, 0, 0.5, 0)
+        label.Text = title .. ": " .. tostring(value)
+        callback(value)
+    end
+
+    hitbox.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            update(input.Position.X)
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            activeTouch = input
+            update(input.Position.X)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            update(input.Position.X)
+        elseif input.UserInputType == Enum.UserInputType.Touch
+            and activeTouch == input then
+            update(input.Position.X)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or (input.UserInputType == Enum.UserInputType.Touch
+                and activeTouch == input) then
+            dragging = false
+            activeTouch = nil
+        end
+    end)
+
+    update(track.AbsolutePosition.X
+        + track.AbsoluteSize.X * ((initial - minimum) / (maximum - minimum)))
+
+    return container
+end
+
+-- Botón flotante M, arrastrable en móvil y PC.
+local floating = make("TextButton", {
+    Name = "FloatingM",
+    Size = UDim2.fromOffset(52, 52),
+    Position = UDim2.new(0.82, 0, 0.65, 0),
+    BackgroundColor3 = DARK,
+    Text = "M",
+    TextColor3 = GREEN,
+    Font = Enum.Font.Code,
+    TextSize = 24,
+    Visible = false,
+    Active = true,
+}, gui)
+make("UICorner", {CornerRadius = UDim.new(1, 0)}, floating)
+make("UIStroke", {Color = GREEN, Thickness = 2}, floating)
+
+local function makeDraggable(object, onTap)
+    local dragging = false
+    local moved = false
+    local startPos
+    local objectPos
+    local activeTouch
+
+    object.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            moved = false
+            startPos = input.Position
+            objectPos = object.Position
+            if input.UserInputType == Enum.UserInputType.Touch then
+                activeTouch = input
+            end
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or (input.UserInputType == Enum.UserInputType.Touch
+                and activeTouch == input) then
+            local delta = input.Position - startPos
+            if math.abs(delta.X) > 5 or math.abs(delta.Y) > 5 then
+                moved = true
+            end
+            object.Position = UDim2.new(
+                objectPos.X.Scale, objectPos.X.Offset + delta.X,
+                objectPos.Y.Scale, objectPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or (input.UserInputType == Enum.UserInputType.Touch
+                and activeTouch == input) then
+            local wasTap = dragging and not moved
+            dragging = false
+            activeTouch = nil
+            if wasTap then onTap() end
+        end
+    end)
+end
+
+local function showMenu()
+    main.Visible = true
+    floating.Visible = false
+end
+
+local function hideMenu()
+    main.Visible = false
+    floating.Visible = true
+end
+
+makeDraggable(header, function() end)
+makeDraggable(floating, showMenu)
+
+close.Activated:Connect(hideMenu)
+
+-- KILL destruye la interfaz y desconecta las conexiones
+-- asociadas a sus instancias al destruirlas.
+kill.Activated:Connect(function()
+    gui:Destroy()
+end)
+
+-- Pestañas funcionales de la interfaz.
+local function renderTab(name)
+    clearContent()
+
+    if name == "PLAYER" then
+        addLabel("PLAYER ESP")
+        addLabel("Los indicadores de prueba se conectan aquí.")
+        addButton("Indicadores de prueba: OFF", function()
+            -- Conecta aquí únicamente indicadores de tu propia experiencia.
+        end)
+
+    elseif name == "AIM" then
+        addLabel("AIM ASSIST")
+        addLabel("Panel de configuración visual para pruebas autorizadas.")
+        addSlider("FOV visual", 40, 250, 100, function(value)
+            -- Actualiza el radio de un indicador visual de prueba.
+        end)
+        addButton("Asistencia: OFF", function()
+            -- No implementa apuntado automático en partidas públicas.
+        end)
+
+    elseif name == "TRACERS" then
+        addLabel("TRACERS")
+        addButton("Líneas de prueba: OFF", function()
+            -- Añade líneas solo entre objetos de prueba de tu experiencia.
+        end)
+
+    elseif name == "MOVEMENT" then
+        addLabel("MOVEMENT")
+        addSlider("Velocidad de prueba", 8, 32, 16, function(value)
+            -- El servidor de tu experiencia debe validar los cambios.
+        end)
+        addButton("Restablecer valor visual", function()
+            -- Restablece el valor mostrado en el panel.
+        end)
+
+    elseif name == "SETTINGS" then
+        addLabel("CONFIGURACIÓN")
+        addButton("Minimizar menú", hideMenu)
+        addButton("Cerrar interfaz", function()
+            gui:Destroy()
+        end)
+    end
+end
+
+for _, name in ipairs({"PLAYER", "AIM", "TRACERS", "MOVEMENT", "SETTINGS"}) do
+    local tab = make("TextButton", {
+        Size = UDim2.new(0, 0, 1, 0),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = PANEL,
+        Text = name,
+        TextColor3 = GREEN,
+        Font = Enum.Font.Code,
+        TextSize = 10,
+        LayoutOrder = table.find(
+            {"PLAYER", "AIM", "TRACERS", "MOVEMENT", "SETTINGS"}, name
+        ),
+    }, tabs)
+
+    make("UIPadding", {
+        PaddingLeft = UDim.new(0, 7),
+        PaddingRight = UDim.new(0, 7),
+    }, tab)
+
+    tab.Activated:Connect(function()
+        renderTab(name)
+    end)
+end
+
+renderTab("PLAYER")
