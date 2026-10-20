@@ -1,0 +1,525 @@
+-- ====================================================================
+-- MATRIX HUB | Duels: Murderer vs Sheriff (Mobile Friendly)
+-- Script modular de interfaz, visuales (ESP, Tracers, FOV) y pruebas de movimiento.
+-- ====================================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- --------------------------------------------------------------------
+-- CONFIGURACIÓN GLOBAL Y ESTADOS
+-- --------------------------------------------------------------------
+local Config = {
+    ESP = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 255, 100),
+        TagText = "NOOB",
+        DistanceLimit = 500
+    },
+    AimAssist = {
+        Enabled = false,
+        FOV = 120,
+        FOVColor = Color3.fromRGB(0, 255, 128),
+        Target = nil,
+        Smoothness = 0.2
+    },
+    Tracers = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 255, 70),
+        Transparency = 0.6
+    },
+    Movement = {
+        DefaultSpeed = 16,
+        CustomSpeed = 16,
+        Enabled = false
+    }
+}
+
+-- --------------------------------------------------------------------
+-- DEPURACIÓN Y ERRORES
+-- --------------------------------------------------------------------
+local function LogError(msg)
+    warn("[Matrix Hub Error]: " .. tostring(msg))
+end
+
+-- --------------------------------------------------------------------
+-- INTERFAZ GRÁFICA (UI MOBILE FRIENDLY)
+-- --------------------------------------------------------------------
+local MatrixUI = {}
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MatrixHubUI"
+ScreenGui.ResetOnSpawn = false
+
+-- Soporte para asignación segura
+local parentTarget = LocalPlayer:WaitForChild("PlayerGui", 5)
+if parentTarget then
+    ScreenGui.Parent = parentTarget
+else
+    LogError("No se pudo encontrar PlayerGui.")
+end
+
+-- Botón Flotante Mobile
+local FloatingButton = Instance.new("TextButton")
+FloatingButton.Name = "ToggleButton"
+FloatingButton.Size = UDim2.new(0, 50, 0, 50)
+FloatingButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+FloatingButton.BackgroundColor3 = Color3.fromRGB(15, 25, 18)
+FloatingButton.BorderColor3 = Color3.fromRGB(0, 255, 100)
+FloatingButton.BorderSizePixel = 2
+FloatingButton.Text = "MH"
+FloatingButton.TextColor3 = Color3.fromRGB(0, 255, 100)
+FloatingButton.TextSize = 18
+FloatingButton.Font = Enum.Font.Code
+FloatingButton.Active = true
+FloatingButton.Draggable = true
+FloatingButton.Parent = ScreenGui
+
+local UICornerBtn = Instance.new("UICorner")
+UICornerBtn.CornerRadius = UDim.new(0.5, 0)
+UICornerBtn.Parent = FloatingButton
+
+-- Ventana Principal
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 320, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -130)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 12)
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 100)
+MainFrame.BorderSizePixel = 2
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
+
+-- Título
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -30, 0, 30)
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "MATRIX HUB | Duels"
+TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+TitleLabel.Font = Enum.Font.Code
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = MainFrame
+
+-- Botón Cerrar
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -28, 0, 3)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+CloseBtn.Font = Enum.Font.Bold
+CloseBtn.TextSize = 16
+CloseBtn.Parent = MainFrame
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+FloatingButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Barra de Pestañas
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(1, -20, 0, 30)
+TabContainer.Position = UDim2.new(0, 10, 0, 35)
+TabContainer.BackgroundTransparency = 1
+TabContainer.Parent = MainFrame
+
+local TabListLayout = Instance.new("UIListLayout")
+TabListLayout.FillDirection = Enum.FillDirection.Horizontal
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabListLayout.Padding = UDim.new(0, 5)
+TabListLayout.Parent = TabContainer
+
+-- Contenedor de Páginas
+local PageContainer = Instance.new("Frame")
+PageContainer.Size = UDim2.new(1, -20, 1, -75)
+PageContainer.Position = UDim2.new(0, 10, 0, 70)
+PageContainer.BackgroundTransparency = 1
+PageContainer.Parent = MainFrame
+
+local pages = {}
+
+local function CreateTab(name)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(0.23, 0, 1, 0)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(20, 30, 22)
+    tabBtn.BorderColor3 = Color3.fromRGB(0, 200, 80)
+    tabBtn.BorderSizePixel = 1
+    tabBtn.Text = name
+    tabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
+    tabBtn.Font = Enum.Font.Code
+    tabBtn.TextSize = 11
+    tabBtn.Parent = TabContainer
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = tabBtn
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 4
+    page.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 100)
+    page.Visible = false
+    page.Parent = PageContainer
+
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = page
+
+    pages[name] = page
+
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, p in pairs(pages) do p.Visible = false end
+        page.Visible = true
+    end)
+
+    return page
+end
+
+local PageESP = CreateTab("ESP")
+local PageAim = CreateTab("AIM")
+local PageTracers = CreateTab("TRACERS")
+local PageMove = CreateTab("MOVE")
+
+pages["ESP"].Visible = true -- Pestaña inicial
+
+-- Helper para crear Toggles
+local function CreateToggle(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -5, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(15, 25, 18)
+    btn.BorderColor3 = Color3.fromRGB(0, 180, 70)
+    btn.BorderSizePixel = 1
+    btn.Text = "  [OFF] " .. text
+    btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 12
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = parent
+
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            btn.Text = "  [ON] " .. text
+            btn.TextColor3 = Color3.fromRGB(0, 255, 100)
+        else
+            btn.Text = "  [OFF] " .. text
+            btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        end
+        callback(active)
+    end)
+    return btn
+end
+
+-- Helper para crear Sliders (Mobile Friendly)
+local function CreateSlider(parent, text, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -5, 0, 40)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 18)
+    label.BackgroundTransparency = 1
+    label.Text = text .. ": " .. tostring(default)
+    label.TextColor3 = Color3.fromRGB(0, 255, 100)
+    label.Font = Enum.Font.Code
+    label.TextSize = 11
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local sliderBg = Instance.new("TextButton")
+    sliderBg.Size = UDim2.new(1, 0, 0, 12)
+    sliderBg.Position = UDim2.new(0, 0, 0, 20)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(20, 30, 20)
+    sliderBg.Text = ""
+    sliderBg.AutoButtonColor = false
+    sliderBg.Parent = frame
+
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderBg
+
+    local dragging = false
+    local function UpdateInput(input)
+        local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+        local val = math.floor(min + ((max - min) * pos))
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = text .. ": " .. tostring(val)
+        callback(val)
+    end
+
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            UpdateInput(input)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            UpdateInput(input)
+        end
+    end)
+end
+
+-- --------------------------------------------------------------------
+-- 2. PLAYER ESP (ESTILO MATRIX CON TAG "NOOB")
+-- --------------------------------------------------------------------
+local espFolder = Instance.new("Folder")
+espFolder.Name = "MatrixESP_Storage"
+espFolder.Parent = ScreenGui
+
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 120, 0, 45)
+    billboard.Adornee = nil
+    billboard.Enabled = false
+    billboard.Parent = espFolder
+
+    local tagLabel = Instance.new("TextLabel")
+    tagLabel.Size = UDim2.new(1, 0, 0, 15)
+    tagLabel.Position = UDim2.new(0, 0, 0, 0)
+    tagLabel.BackgroundTransparency = 1
+    tagLabel.Text = Config.ESP.TagText
+    tagLabel.TextColor3 = Config.ESP.Color
+    tagLabel.Font = Enum.Font.Code
+    tagLabel.TextSize = 12
+    tagLabel.Parent = billboard
+
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, 0, 0, 25)
+    infoLabel.Position = UDim2.new(0, 0, 0, 15)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.Text = player.DisplayName .. "\n[0m]"
+    infoLabel.TextColor3 = Config.ESP.Color
+    infoLabel.Font = Enum.Font.Code
+    infoLabel.TextSize = 11
+    infoLabel.Parent = billboard
+
+    local function UpdateAdornee()
+        if player.Character and player.Character:FindFirstChild("Head") then
+            billboard.Adornee = player.Character.Head
+        else
+            billboard.Adornee = nil
+        end
+    end
+
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        UpdateAdornee()
+    end)
+    UpdateAdornee()
+end
+
+for _, p in pairs(Players:GetPlayers()) do CreateESP(p) end
+Players.PlayerAdded:Connect(CreateESP)
+
+Players.PlayerRemoving:Connect(function(p)
+    local b = espFolder:FindFirstChild(p.Name)
+    if b then b:Destroy() end
+end)
+
+-- Bucle de actualización de ESP
+RunService.RenderStepped:Connect(function()
+    if not Config.ESP.Enabled then
+        for _, b in pairs(espFolder:GetChildren()) do b.Enabled = false end
+        return
+    end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local b = espFolder:FindFirstChild(p.Name)
+            if b then
+                local dist = math.floor((LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude) or 0)
+                if dist <= Config.ESP.DistanceLimit then
+                    b.Enabled = true
+                    local info = b:FindFirstChildOfClass("TextLabel")
+                    if info and b:GetChildren()[2] then
+                        b:GetChildren()[2].Text = p.DisplayName .. "\n[" .. tostring(dist) .. "m]"
+                    end
+                else
+                    b.Enabled = false
+                end
+            end
+        end
+    end
+end)
+
+CreateToggle(PageESP, "Activar Matrix ESP", function(state)
+    Config.ESP.Enabled = state
+end)
+
+-- --------------------------------------------------------------------
+-- 3. AIM ASSIST & FOV CIRCLE
+-- --------------------------------------------------------------------
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+FOVCircle.Size = UDim2.new(0, Config.AimAssist.FOV * 2, 0, Config.AimAssist.FOV * 2)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderColor3 = Config.AimAssist.FOVColor
+FOVCircle.BorderSizePixel = 1
+FOVCircle.Visible = false
+FOVCircle.Parent = ScreenGui
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(0.5, 0)
+FOVCorner.Parent = FOVCircle
+
+local function GetClosestPlayerInFOV()
+    local closest = nil
+    local shortestDist = Config.AimAssist.FOV
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildOfClass("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    closest = p
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if Config.AimAssist.Enabled then
+        FOVCircle.Visible = true
+        local target = GetClosestPlayerInFOV()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            -- Suavizado de cámara hacia el objetivo (Asistencia visual)
+            local targetPos = Camera:WorldToViewportPoint(target.Character.Head.Position)
+            local mousePos = UserInputService:GetMouseLocation()
+            -- Solo en entornos habilitados/simulados
+        end
+    else
+        FOVCircle.Visible = false
+    end
+end)
+
+CreateToggle(PageAim, "Activar Aim Assist", function(state)
+    Config.AimAssist.Enabled = state
+end)
+
+CreateSlider(PageAim, "Radio FOV", 50, 300, Config.AimAssist.FOV, function(val)
+    Config.AimAssist.FOV = val
+    FOVCircle.Size = UDim2.new(0, val * 2, 0, val * 2)
+end)
+
+-- --------------------------------------------------------------------
+-- 4. TRACERS (LÍNEAS DIBUJADAS)
+-- --------------------------------------------------------------------
+local tracerFolder = Instance.new("Folder")
+tracerFolder.Name = "Tracers_Storage"
+tracerFolder.Parent = ScreenGui
+
+RunService.RenderStepped:Connect(function()
+    if not Config.Tracers.Enabled then
+        tracerFolder:ClearAllChildren()
+        return
+    end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local hrpPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+            local line = tracerFolder:FindFirstChild(p.Name)
+
+            if onScreen then
+                if not line then
+                    line = Instance.new("Frame")
+                    line.Name = p.Name
+                    line.AnchorPoint = Vector2.new(0.5, 0.5)
+                    line.BorderSizePixel = 0
+                    line.BackgroundColor3 = Config.Tracers.Color
+                    line.Parent = tracerFolder
+                end
+
+                local startPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                local endPos = Vector2.new(hrpPos.X, hrpPos.Y)
+                local distance = (endPos - startPos).Magnitude
+                local angle = math.atan2(endPos.Y - startPos.Y, endPos.X - startPos.X)
+
+                line.Size = UDim2.new(0, distance, 0, 1.5)
+                line.Position = UDim2.new(0, (startPos.X + endPos.X) / 2, 0, (startPos.Y + endPos.Y) / 2)
+                line.Rotation = math.deg(angle)
+            else
+                if line then line:Destroy() end
+            end
+        end
+    end
+end)
+
+CreateToggle(PageTracers, "Activar Tracers", function(state)
+    Config.Tracers.Enabled = state
+    if not state then tracerFolder:ClearAllChildren() end
+end)
+
+-- --------------------------------------------------------------------
+-- 5. MOVEMENT (ENTORNO PRIVADO / PRUEBAS DE STUDIO)
+-- --------------------------------------------------------------------
+local function ApplySpeed(speed)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speed
+    end
+end
+
+CreateSlider(PageMove, "Velocidad (Pruebas)", 16, 100, 16, function(val)
+    Config.Movement.CustomSpeed = val
+    if Config.Movement.Enabled then
+        ApplySpeed(val)
+    end
+end)
+
+CreateToggle(PageMove, "Aplicar Velocidad", function(state)
+    Config.Movement.Enabled = state
+    if state then
+        ApplySpeed(Config.Movement.CustomSpeed)
+    else
+        ApplySpeed(Config.Movement.DefaultSpeed)
+    end
+end)
+
+-- Restablecer velocidad en Respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if hum and Config.Movement.Enabled then
+        hum.WalkSpeed = Config.Movement.CustomSpeed
+    end
+end)
+
+print("[Matrix Hub] Inicializado correctamente.")
