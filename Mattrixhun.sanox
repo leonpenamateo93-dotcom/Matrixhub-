@@ -24,6 +24,13 @@ MATRIXHUB_UI:CreateWindow({
 })
 MATRIXHUB:SetSize(UDim2.fromOffset(580, 460))
 MATRIXHUB_UI:SetTheme("Emerald")
+Settings:Button({
+    Title = "GUARDAR APARIENCIA",
+    Icon = "save",
+    Callback = function()
+        MatrixConfig:Save()
+    end
+})
 UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -33,6 +40,27 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end) 
 
 local Home = MATRIXHUB:Tab({ Title = "HOME", Icon = "house" })
+Home:Section({
+    Title = "BIENVENIDO A MATRIXHUB",
+    Icon = "house",
+    Opened = true
+})
+
+Home:Paragraph({
+    Title = "MATRIXHUB",
+    Desc = "Bienvenido, " .. game:GetService("Players").LocalPlayer.DisplayName ..
+    "\n\nGracias por utilizar MATRIXHUB."
+})
+
+Home:Paragraph({
+    Title = "INFORMACIÓN",
+    Desc = "VERSION: BETA\nDESARROLLADOR: MATT\nTEMA: EMERALD"
+})
+
+Home:Paragraph({
+    Title = "AVISO",
+    Desc = "Revisa las opciones de configuración para personalizar la interfaz."
+})
 local Aimbot = MATRIXHUB:Tab({ Title = "AIMBOT", Icon = "crosshair" })
 local Visuales = MATRIXHUB:Tab({ Title = "VISUALES", Icon = "eye" })
 local Movimiento = MATRIXHUB:Tab({ Title = "MOVIMIENTO", Icon = "person-standing" })
