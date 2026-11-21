@@ -1,5 +1,5 @@
 
-local _version = "1.6.66"
+local1 _version = "1.6.66"
 local  MATRIXHUB_UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. _version .. "/main.lua"))()
 local  MATRIXHUB =
 MATRIXHUB_UI:CreateWindow({
@@ -40,17 +40,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end) 
 
 local Home = MATRIXHUB:Tab({ Title = "HOME", Icon = "house" })
-Home:Section({
-    Title = "BIENVENIDO A MATRIXHUB",
-    Icon = "house",
-    Opened = true
-})
-
-Home:Paragraph({
-    Title = "MATRIXHUB",
-    Desc = "Bienvenido, " .. game:GetService("Players").LocalPlayer.DisplayName ..
-    "\n\nGracias por utilizar MATRIXHUB."
-})
+local Aimbot = MATRIXHUB:Tab({ Title = "AIMBOT", Icon = "crosshair" })
 
 Home:Paragraph({
     Title = "INFORMACIÓN",
